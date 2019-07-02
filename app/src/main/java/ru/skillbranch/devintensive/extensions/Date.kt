@@ -5,9 +5,9 @@ import java.util.*
 import kotlin.math.abs
 
 private const val SECOND = 1000L
-private const val MINUTE = 60L * SECOND
-private const val HOUR = 60L * MINUTE
-private const val DAY = 24L * HOUR
+private const val MINUTE = 60 * SECOND
+private const val HOUR = 60 * MINUTE
+private const val DAY = 24 * HOUR
 
 fun Date.format(pattern: String = "HH:mm:ss dd.MM.yy"): String {
     val dateFormat = SimpleDateFormat(pattern, Locale("ru"))
@@ -26,49 +26,47 @@ fun Date.add(value: Int, timeUnit: TimeUnits): Date {
 
 }
 
-fun Date.humanizeDiff(date: Date = Date()): String = when {
-    this == date -> "только что"
-    this.time < date.time - 365 * DAY -> "более года назад"
-    this.time > date.time + 365 * DAY -> "более чем через год"
-    else -> {
-        val template = if (this > date) "через %s" else "%s назад"
-        val (value, unit) = when (val diff = abs(this.time - date.time)) {
-            in 0 until MINUTE -> diff / SECOND to TimeUnits.SECOND
-            in MINUTE until HOUR -> diff / MINUTE to TimeUnits.MINUTE
-            in HOUR until DAY -> diff / HOUR to TimeUnits.HOUR
-            else -> diff / DAY to TimeUnits.DAY
+fun Date.humanizeDiff(date: Date = Date()): String {
+    val diff = (date.time - this.time)
+
+    return when (Math.abs(diff / DAY).toInt()) {
+
+        0 -> {
+            when (Math.abs(diff / HOUR).toInt()) {
+                0 -> {
+                    when (Math.abs(diff / MINUTE).toInt()) {
+                        0 -> {
+                            when (Math.abs(diff / SECOND).toInt()) {
+                                in 0..15 -> if ((diff / SECOND).toInt() > 0) "только что" else "скоро"
+                                else -> if ((diff / SECOND).toInt() > 0) "менее минуты назад" else "более чем через минуту"
+                            }
+                        }
+                        1 -> "минуту назад"
+                        in 2..4, in 22..24,
+                        in 32..34, in 42..44,
+                        in 52..54 -> if ((diff / MINUTE).toInt() > 0) "${diff / MINUTE} минуты назад" else "через ${-diff / MINUTE} минуты"
+                        21, 31, 41, 51 -> if ((diff / MINUTE).toInt() > 0) "${diff / MINUTE} минуту назад" else "через ${-diff / MINUTE} минуту"
+                        else -> if ((diff / MINUTE).toInt() > 0) "${diff / MINUTE} минут назад" else "через ${-diff / MINUTE} минут"
+                    }
+                }
+                1, 21 -> if ((diff / HOUR).toInt() > 0) "${diff / HOUR} час назад" else "через ${diff / HOUR} час"
+                in 2..4, in 22..24 -> if ((diff / HOUR).toInt() > 0) "${diff / HOUR} часа назад" else "через ${diff / HOUR} часа"
+                else -> if ((diff / HOUR).toInt() > 0) "${diff / HOUR} часов назад" else "через ${diff / HOUR} часов"
+            }
         }
-        template.format(pluralForm(value.toInt(), unit))
+
+        1 -> if ((diff / DAY).toInt() > 0) "вчера" else "завтра"
+        in 2..4 -> if ((diff / DAY).toInt() > 0) "${diff / DAY} дня назад" else "через ${-diff / DAY} дня"
+        in 5..7 -> if ((diff / DAY).toInt() > 0) "${diff / DAY} дней назад" else "через ${-diff / DAY} дней"
+        in 8..14 -> if ((diff / DAY).toInt() > 0) "более недели назад" else "более чем через неделю"
+        in 15..31 -> if ((diff / DAY).toInt() > 0) "более двух недель назад" else "более чем через две недели"
+        in 32..61 -> if ((diff / DAY).toInt() > 0) "более месяца назад" else "более чем через месяц"
+        in 62..182 -> if ((diff / DAY).toInt() > 0) "более ${diff / DAY} месяцев назад" else "более чем через ${-diff / DAY} месяца"
+        in 183..365 -> if ((diff / DAY).toInt() > 0) "более полугода назад" else "более чем через полгода"
+        in 365..Int.MAX_VALUE -> if ((diff / DAY).toInt() > 0) "более года назад" else "более чем через год"
+
+        else -> "никогда"
     }
-
-}
-
-
-private fun pluralForm(value: Int, unit: TimeUnits): String {
-    val form = when {
-        value % 10 == 1 && value != 11 -> 0
-        value % 10 in 2..4 -> 1
-        else -> 2
-    }
-    return arrayListOf(
-            "%s секунда",
-            "%s секунды",
-            "%s секунд",
-            "%s минута",
-            "%s минуты",
-            "%s минут",
-            "%s час",
-            "%s часа",
-            "%s часов",
-            "%s день",
-            "%s дня",
-            "%s дней"
-    )[form + 3 * when (unit) {
-        TimeUnits.SECOND -> 0
-        TimeUnits.MINUTE -> 1
-        TimeUnits.HOUR -> 2
-        TimeUnits.DAY -> 3
-    }].format(value)
 }
 
 enum class TimeUnits { SECOND, MINUTE, HOUR, DAY }

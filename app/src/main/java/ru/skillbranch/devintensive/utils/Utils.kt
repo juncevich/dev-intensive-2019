@@ -16,11 +16,17 @@ object Utils {
         }
     }
 
-    fun toInitials(firstName: String?, lastName: String?): String = when {
-        (firstName == null || firstName.isBlank()) && (lastName == null || lastName.isBlank()) -> "null"
-        (firstName == null || firstName.isBlank()) && lastName != null -> lastName.trimStart().first().toString().toUpperCase()
-        firstName != null && (lastName == null || lastName.isBlank()) -> firstName.trimStart().first().toString().toUpperCase()
-        else -> (firstName!!.trimStart().first().toString() + lastName!!.trimStart().first()).toUpperCase()
+    fun toInitials(firstName: String?, lastName: String?): String? {
+        var initials: String? = ""
+        for (part: String? in arrayOf(firstName, lastName)) {
+            initials += when {
+                part == null -> ""
+                part.trim() == "" -> ""
+                else -> part.substring(0, 1).toUpperCase()
+            }
+        }
+        initials = if (initials == "") null else initials
+        return initials
     }
 }
 
