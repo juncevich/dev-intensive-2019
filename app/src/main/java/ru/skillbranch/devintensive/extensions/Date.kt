@@ -27,46 +27,66 @@ fun Date.add(value: Int, timeUnit: TimeUnits): Date {
 }
 
 fun Date.humanizeDiff(date: Date = Date()): String {
-    val diff = (date.time - this.time)
-
-    return when (Math.abs(diff / DAY).toInt()) {
-
-        0 -> {
-            when (Math.abs(diff / HOUR).toInt()) {
-                0 -> {
-                    when (Math.abs(diff / MINUTE).toInt()) {
-                        0 -> {
-                            when (Math.abs(diff / SECOND).toInt()) {
-                                in 0..15 -> if ((diff / SECOND).toInt() > 0) "только что" else "скоро"
-                                else -> if ((diff / SECOND).toInt() > 0) "менее минуты назад" else "более чем через минуту"
-                            }
-                        }
-                        1 -> "минуту назад"
-                        in 2..4, in 22..24,
-                        in 32..34, in 42..44,
-                        in 52..54 -> if ((diff / MINUTE).toInt() > 0) "${diff / MINUTE} минуты назад" else "через ${-diff / MINUTE} минуты"
-                        21, 31, 41, 51 -> if ((diff / MINUTE).toInt() > 0) "${diff / MINUTE} минуту назад" else "через ${-diff / MINUTE} минуту"
-                        else -> if ((diff / MINUTE).toInt() > 0) "${diff / MINUTE} минут назад" else "через ${-diff / MINUTE} минут"
-                    }
-                }
-                1, 21 -> if ((diff / HOUR).toInt() > 0) "${diff / HOUR} час назад" else "через ${diff / HOUR} час"
-                in 2..4, in 22..24 -> if ((diff / HOUR).toInt() > 0) "${diff / HOUR} часа назад" else "через ${diff / HOUR} часа"
-                else -> if ((diff / HOUR).toInt() > 0) "${diff / HOUR} часов назад" else "через ${diff / HOUR} часов"
-            }
-        }
-
-        1 -> if ((diff / DAY).toInt() > 0) "вчера" else "завтра"
-        in 2..4 -> if ((diff / DAY).toInt() > 0) "${diff / DAY} дня назад" else "через ${-diff / DAY} дня"
-        in 5..7 -> if ((diff / DAY).toInt() > 0) "${diff / DAY} дней назад" else "через ${-diff / DAY} дней"
-        in 8..14 -> if ((diff / DAY).toInt() > 0) "более недели назад" else "более чем через неделю"
-        in 15..31 -> if ((diff / DAY).toInt() > 0) "более двух недель назад" else "более чем через две недели"
-        in 32..61 -> if ((diff / DAY).toInt() > 0) "более месяца назад" else "более чем через месяц"
-        in 62..182 -> if ((diff / DAY).toInt() > 0) "более ${diff / DAY} месяцев назад" else "более чем через ${-diff / DAY} месяца"
-        in 183..365 -> if ((diff / DAY).toInt() > 0) "более полугода назад" else "более чем через полгода"
-        in 365..Int.MAX_VALUE -> if ((diff / DAY).toInt() > 0) "более года назад" else "более чем через год"
-
-        else -> "никогда"
+    val diff = date.time - this.time
+    val absDiff = Math.abs(diff)
+    val isPast = diff > 0
+    return when {
+        absDiff / SECOND <= 1 -> "только что"
+        absDiff / SECOND <= 45 -> if (diff > 0) "несколько секунд назад" else "через несколько секунд"
+        absDiff / SECOND <= 75 -> if (diff > 0) "минуту назад" else "через минуту"
+        absDiff / MINUTE <= 45 -> plurals(absDiff / MINUTE, isPast, TimeUnits.MINUTE)
+        absDiff / MINUTE <= 75 -> if (diff > 0) "час назад" else "через час"
+        absDiff / HOUR <= 22 -> plurals(absDiff / HOUR, isPast, TimeUnits.HOUR)
+        absDiff / HOUR <= 26 -> if (diff > 0) "день назад" else "через день"
+        absDiff / DAY <= 360 -> plurals(absDiff / DAY, isPast, TimeUnits.DAY)
+        else -> if (diff > 0) "более года назад" else "более чем через год"
     }
+}
+
+
+private fun plurals(diff: Long, isPast: Boolean, units: TimeUnits): String {
+    val remainder = diff % 10
+    val quotient = diff / 10
+    val preLastDigit = diff % 100 / 10
+
+    val plurals: Map<TimeUnits, Map<PluralUnits, String>> = mapOf(
+        TimeUnits.MINUTE to mapOf(
+            PluralUnits.FEW to "минуты",
+            PluralUnits.ONE to "минуту",
+            PluralUnits.MANY to "минут"
+        ),
+        TimeUnits.HOUR to mapOf(
+            PluralUnits.FEW to "часа",
+            PluralUnits.ONE to "час",
+            PluralUnits.MANY to "часов"
+        ),
+        TimeUnits.DAY to mapOf(
+            PluralUnits.FEW to "дня",
+            PluralUnits.ONE to "день",
+            PluralUnits.MANY to "дней"
+        )
+    )
+
+    return when {
+        (preLastDigit == 1L) -> if (isPast) "$diff ${plurals[units]?.get(PluralUnits.MANY)} назад"
+        else "через $diff ${plurals[units]?.get(PluralUnits.MANY)}"
+
+        (remainder in 2..4) && (quotient != 1L) ->
+            if (isPast) "$diff ${plurals[units]?.get(PluralUnits.FEW)} назад"
+            else "через $diff ${plurals[units]?.get(PluralUnits.FEW)}"
+        (remainder == 1L) && (quotient != 1L) ->
+            if (isPast) "$diff ${plurals[units]?.get(PluralUnits.ONE)} назад"
+            else "через $diff ${plurals[units]?.get(PluralUnits.ONE)}"
+        else ->
+            if (isPast) "$diff ${plurals[units]?.get(PluralUnits.MANY)} назад"
+            else "через $diff ${plurals[units]?.get(PluralUnits.MANY)}"
+    }
+
+
+}
+
+enum class PluralUnits {
+    FEW, ONE, MANY
 }
 
 enum class TimeUnits { SECOND, MINUTE, HOUR, DAY }
